@@ -49,7 +49,7 @@ export async function sendWCDataToSpreadsheet({
   });
 }
 
-const formatBoolean = (value: boolean) => (value ? "Oui" : "Non");
+const formatBoolean = (value: boolean) => (value ? "OUI" : "NON");
 
 const sendDataToSpreadsheet = async ({
   sheetName,
