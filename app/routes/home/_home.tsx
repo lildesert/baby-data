@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { format } from "date-fns";
+import { useEffect } from "react";
 import { data, Form, useNavigation } from "react-router";
 import invariant from "tiny-invariant";
 import { Button } from "~/components/ui/button";
@@ -15,13 +16,27 @@ export function meta({}: Route.MetaArgs) {
 
 const isString = (value: unknown): value is string => typeof value === "string";
 
+const formatDateTime = (dateTime: string) => {
+  const date = new Date(dateTime);
+  return format(date, "dd/MM/yyyy HH:mm:ss");
+};
+
 export async function action({ request }: Route.ActionArgs) {
   const formData = await request.formData();
   const startDateTime = formData.get("startDateTime");
   invariant(isString(startDateTime), "Missing startDateTime");
-  const parsedStartDateTime = new Date(startDateTime);
+  const formattedStartDate = formatDateTime(startDateTime);
+
+  const endDateTime = formData.get("endDateTime");
+  const formattedEndDate =
+    isString(endDateTime) && endDateTime !== ""
+      ? formatDateTime(endDateTime)
+      : "";
   try {
-    await sendDataToSpreadsheet({ startDateTime: parsedStartDateTime });
+    await sendDataToSpreadsheet({
+      startDateTime: formattedStartDate,
+      endDateTime: formattedEndDate,
+    });
     return { ok: true };
   } catch (e) {
     console.error(e);
@@ -30,12 +45,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function Home({ actionData }: Route.ComponentProps) {
-  const [currentDate, setCurrentDate] = useState(() => {
-    const now = new Date();
-    return now.toISOString().split("T")[0];
-  });
   const { state } = useNavigation();
-
   const isSubmitting = state !== "idle";
   const isSubmitSuccess = !!actionData && "ok" in actionData;
 
@@ -58,15 +68,21 @@ export default function Home({ actionData }: Route.ComponentProps) {
         <CardContent>
           <Form method="post" className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="dateTime">Date de début</Label>
+              <Label htmlFor="startDateTime">Date de début *</Label>
               <Input
                 type="datetime-local"
-                id="dateTime"
+                id="startDateTime"
                 name="startDateTime"
-                defaultValue={`${currentDate}T${new Date()
-                  .toTimeString()
-                  .slice(0, 5)}`}
+                defaultValue={format(new Date(), "yyyy-MM-dd'T'HH:mm")}
                 required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="endDateTime">Date de fin</Label>
+              <Input
+                type="datetime-local"
+                id="endDateTime"
+                name="endDateTime"
               />
             </div>
             <Button type="submit" disabled={isSubmitting}>

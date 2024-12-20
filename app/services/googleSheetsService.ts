@@ -18,8 +18,10 @@ async function getAuthClient() {
 
 export async function sendDataToSpreadsheet({
   startDateTime,
+  endDateTime,
 }: {
-  startDateTime: Date;
+  startDateTime: string;
+  endDateTime: string;
 }) {
   try {
     // Create a client for the Sheets API
@@ -29,12 +31,12 @@ export async function sendDataToSpreadsheet({
     });
 
     // Define the row data to append
-    const values = [[startDateTime]];
+    const values = [[startDateTime, endDateTime]];
 
     // Append the row
     const response = await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A2`,
+      range: `${SHEET_NAME}!A1`,
       valueInputOption: "RAW",
       insertDataOption: "INSERT_ROWS",
       requestBody: {
