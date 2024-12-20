@@ -2,7 +2,8 @@ import { google } from "googleapis";
 
 // The ID of your spreadsheet (can be found in the URL of your spreadsheet)
 const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
-const SHEET_NAME = process.env.SHEET_NAME; // Change "Sheet1" to your target sheet name
+const FOOD_SHEET_NAME = process.env.FOOD_SHEET_NAME;
+const WC_SHEET_NAME = process.env.WC_SHEET_NAME;
 
 async function getAuthClient() {
   const auth = new google.auth.GoogleAuth({
@@ -16,13 +17,47 @@ async function getAuthClient() {
   return auth;
 }
 
-export async function sendDataToSpreadsheet({
+export async function sendFoodDataToSpreadsheet({
   startDateTime,
   endDateTime,
 }: {
   startDateTime: string;
   endDateTime: string;
 }) {
+  const values = [[startDateTime, endDateTime]];
+  await sendDataToSpreadsheet({
+    sheetName: FOOD_SHEET_NAME,
+    values,
+  });
+}
+
+export async function sendWCDataToSpreadsheet({
+  startDateTime,
+  hasPeed,
+  hasPooped,
+}: {
+  startDateTime: string;
+  hasPeed: boolean;
+  hasPooped: boolean;
+}) {
+  const values = [
+    [startDateTime, formatBoolean(hasPeed), formatBoolean(hasPooped)],
+  ];
+  await sendDataToSpreadsheet({
+    sheetName: WC_SHEET_NAME,
+    values,
+  });
+}
+
+const formatBoolean = (value: boolean) => (value ? "Oui" : "Non");
+
+const sendDataToSpreadsheet = async ({
+  sheetName,
+  values,
+}: {
+  sheetName: string | undefined;
+  values: string[][];
+}) => {
   try {
     // Create a client for the Sheets API
     const sheets = google.sheets({
@@ -30,13 +65,10 @@ export async function sendDataToSpreadsheet({
       auth: await getAuthClient(),
     });
 
-    // Define the row data to append
-    const values = [[startDateTime, endDateTime]];
-
     // Append the row
     const response = await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A1`,
+      range: `${sheetName}!A1`,
       valueInputOption: "RAW",
       insertDataOption: "INSERT_ROWS",
       requestBody: {
@@ -48,4 +80,4 @@ export async function sendDataToSpreadsheet({
   } catch (error) {
     console.error("Error appending row:", error);
   }
-}
+};

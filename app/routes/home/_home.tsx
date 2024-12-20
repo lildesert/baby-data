@@ -6,8 +6,12 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "../../components/ui/radio-group";
 import { toast } from "../../hooks/use-toast";
-import { sendDataToSpreadsheet } from "../../services/googleSheetsService";
+import {
+  sendFoodDataToSpreadsheet,
+  sendWCDataToSpreadsheet,
+} from "../../services/googleSheetsService";
 import type { Route } from "./+types/_home";
 
 export function meta({}: Route.MetaArgs) {
@@ -21,8 +25,28 @@ const formatDateTime = (dateTime: string) => {
   return format(date, "dd/MM/yyyy HH:mm:ss");
 };
 
+enum Action {
+  FOOD = "FOOD",
+  WC = "WC",
+}
+
 export async function action({ request }: Route.ActionArgs) {
   const formData = await request.formData();
+
+  const action = formData.get("_action");
+  invariant(isString(action), "Missing _action");
+
+  if (action === Action.FOOD) {
+    return handleFoodData(formData);
+  }
+  if (action === Action.WC) {
+    return handleWCData(formData);
+  }
+
+  return data({ errorCode: "invalid-action" }, { status: 400 });
+}
+
+const handleFoodData = async (formData: FormData) => {
   const startDateTime = formData.get("startDateTime");
   invariant(isString(startDateTime), "Missing startDateTime");
   const formattedStartDate = formatDateTime(startDateTime);
@@ -33,7 +57,7 @@ export async function action({ request }: Route.ActionArgs) {
       ? formatDateTime(endDateTime)
       : "";
   try {
-    await sendDataToSpreadsheet({
+    await sendFoodDataToSpreadsheet({
       startDateTime: formattedStartDate,
       endDateTime: formattedEndDate,
     });
@@ -42,7 +66,33 @@ export async function action({ request }: Route.ActionArgs) {
     console.error(e);
     return data({ errorCode: "unknown" }, { status: 500 });
   }
-}
+};
+
+const handleWCData = async (formData: FormData) => {
+  const hasPeed = formData.get("hasPeed");
+  invariant(isString(hasPeed), "Missing hasPeed");
+  const hasPeedValue = hasPeed === "true";
+
+  const hasPooped = formData.get("hasPooped");
+  invariant(isString(hasPooped), "Missing hasPooped");
+  const hasPoopedValue = hasPooped === "true";
+
+  const startDateTime = formData.get("startDateTime");
+  invariant(isString(startDateTime), "Missing startDateTime");
+  const formattedStartDate = formatDateTime(startDateTime);
+
+  try {
+    await sendWCDataToSpreadsheet({
+      startDateTime: formattedStartDate,
+      hasPeed: hasPeedValue,
+      hasPooped: hasPoopedValue,
+    });
+    return { ok: true };
+  } catch (e) {
+    console.error(e);
+    return data({ errorCode: "unknown" }, { status: 500 });
+  }
+};
 
 export default function Home({ actionData }: Route.ComponentProps) {
   const { state } = useNavigation();
@@ -85,39 +135,71 @@ export default function Home({ actionData }: Route.ComponentProps) {
                 name="endDateTime"
               />
             </div>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              name="_action"
+              value={Action.FOOD}
+              disabled={isSubmitting}
+            >
               Valider
             </Button>
           </Form>
         </CardContent>
       </Card>
 
-      {/* <Card>
+      <Card>
         <CardHeader>
-          <CardTitle>Ajouter un poids</CardTitle>
+          <CardTitle>WC</CardTitle>
         </CardHeader>
         <CardContent>
           <Form method="post" className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="date">Date</Label>
+              <Label htmlFor="startDateTime">Date *</Label>
               <Input
-                type="date"
-                id="date"
-                name="date"
-                defaultValue={currentDate}
+                type="datetime-local"
+                id="startDateTime"
+                name="startDateTime"
+                defaultValue={format(new Date(), "yyyy-MM-dd'T'HH:mm")}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="number">Poids</Label>
-              <Input type="number" id="number" name="number" required />
+              <Label htmlFor="hasPeed">Pipi</Label>
+              <RadioGroup defaultValue="true" name="hasPeed" id="hasPeed">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="true" id="option-yes" />
+                  <Label htmlFor="option-yes">Oui</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="false" id="option-no" />
+                  <Label htmlFor="option-no">Non</Label>
+                </div>
+              </RadioGroup>
             </div>
-            <Button type="submit" disabled={isSubmitting}>
+            <div className="space-y-2">
+              <Label htmlFor="hasPooped">Caca</Label>
+              <RadioGroup defaultValue="true" name="hasPooped" id="hasPooped">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="true" id="option-yes" />
+                  <Label htmlFor="option-yes">Oui</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="false" id="option-no" />
+                  <Label htmlFor="option-no">Non</Label>
+                </div>
+              </RadioGroup>
+            </div>
+            <Button
+              type="submit"
+              name="_action"
+              value={Action.WC}
+              disabled={isSubmitting}
+            >
               Valider
             </Button>
           </Form>
         </CardContent>
-      </Card> */}
+      </Card>
     </main>
   );
 }
