@@ -97,7 +97,8 @@ const handleWCData = async (formData: FormData) => {
 export default function Home({ actionData }: Route.ComponentProps) {
   const { state } = useNavigation();
   const isSubmitting = state !== "idle";
-  const isSubmitSuccess = !!actionData && "ok" in actionData;
+  const isSubmitSuccess =
+    state === "idle" && !!actionData && "ok" in actionData;
 
   useEffect(() => {
     if (isSubmitSuccess) {
