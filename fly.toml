@@ -4,9 +4,6 @@ primary_region = 'cdg'
 [build]
   dockerfile = "/Dockerfile"
 
-[deploy]
-  strategy = "canary"
-
 [http_service]
   internal_port = 3000
   force_https = true
