@@ -81,3 +81,41 @@ const sendDataToSpreadsheet = async ({
     console.error("Error appending row:", error);
   }
 };
+
+export async function getLastFoodTime() {
+  return await getLastFilledCellValue({
+    columnLetter: "A",
+    sheetName: FOOD_SHEET_NAME,
+  });
+}
+
+async function getLastFilledCellValue({
+  columnLetter,
+  sheetName,
+}: {
+  columnLetter: string;
+  sheetName: string | undefined;
+}): Promise<string | null> {
+  try {
+    const sheets = google.sheets({
+      version: "v4",
+      auth: await getAuthClient(),
+    });
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${sheetName}!${columnLetter}:${columnLetter}`,
+    });
+
+    const values = response.data.values;
+    if (!values || values.length === 0) {
+      return null;
+    }
+
+    const lastValue = values[values.length - 1][0];
+    return typeof lastValue === "string" ? lastValue : null;
+  } catch (error) {
+    console.error("Error getting last cell value:", error);
+    return null;
+  }
+}

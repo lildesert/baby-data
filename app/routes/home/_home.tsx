@@ -1,6 +1,6 @@
 import { format } from "date-fns";
-import { useEffect } from "react";
-import { data, Form, useNavigation } from "react-router";
+import { Suspense, useEffect } from "react";
+import { Await, data, Form, useNavigation } from "react-router";
 import invariant from "tiny-invariant";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -9,6 +9,7 @@ import { Label } from "~/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "../../components/ui/radio-group";
 import { toast } from "../../hooks/use-toast";
 import {
+  getLastFoodTime,
   sendFoodDataToSpreadsheet,
   sendWCDataToSpreadsheet,
 } from "../../services/googleSheetsService";
@@ -44,6 +45,11 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   return data({ errorCode: "invalid-action" }, { status: 400 });
+}
+
+export async function loader() {
+  const lastFoodTime = getLastFoodTime();
+  return { lastFoodTime };
 }
 
 const handleFoodData = async (formData: FormData) => {
@@ -94,7 +100,8 @@ const handleWCData = async (formData: FormData) => {
   }
 };
 
-export default function Home({ actionData }: Route.ComponentProps) {
+export default function Home({ actionData, loaderData }: Route.ComponentProps) {
+  const { lastFoodTime } = loaderData;
   const { state } = useNavigation();
   const isSubmitting = state !== "idle";
   const isSubmitSuccess =
@@ -112,6 +119,20 @@ export default function Home({ actionData }: Route.ComponentProps) {
 
   return (
     <main className="container mx-auto p-4 space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Dernière tétée</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Suspense fallback={"Loading..."}>
+            <Await resolve={lastFoodTime}>
+              {(lastFoodTime) =>
+                lastFoodTime ? lastFoodTime : "Aucune donnée"
+              }
+            </Await>
+          </Suspense>
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader>
           <CardTitle>Ajouter une tétée</CardTitle>
@@ -153,7 +174,7 @@ export default function Home({ actionData }: Route.ComponentProps) {
           <CardTitle>WC</CardTitle>
         </CardHeader>
         <CardContent>
-          <Form method="post" className="space-y-4">
+          <Form method="post" className="space-y-8">
             <div className="space-y-2">
               <Label htmlFor="startDateTime">Date *</Label>
               <Input
